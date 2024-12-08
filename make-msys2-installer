@@ -11,61 +11,15 @@ _version="${_date}"
 _newmsysbase="${_build}/newmsys"
 _newmsys="${_newmsysbase}/msys64"
 
-create_installer_archive() {
-  echo "[Creating installer archive...]"
-
-  local _data="${_ifwroot}"/packages/com.msys2.root/data
-  pushd / > /dev/null
-    mkdir -p "${_data}"
-    7z a -mx9 -md128m "${_data}/msys64.7z" "${_newmsys}/"*
-  popd > /dev/null
-}
-
 create_archives() {
   echo "[Creating tarball...]"
   pushd "${_newmsysbase}" > /dev/null
   /usr/bin/tar --transform='s/:/_/g' --dereference --hard-dereference -cf "${_thisdir}/msys2-base-x86_64-${_date}.tar" msys64
   popd > /dev/null
 
-  echo "[Creating xz archive...]"
-  xz -9 --keep --verbose --force --compress --threads=0 "${_thisdir}/msys2-base-x86_64-${_date}.tar"
-  xz --test "${_thisdir}/msys2-base-x86_64-${_date}.tar.xz"
-
   echo "[Creating zstd archive...]"
   zstd -T0 -22 --ultra --force "${_thisdir}/msys2-base-x86_64-${_date}.tar" -o "${_thisdir}/msys2-base-x86_64-${_date}.tar.zst"
   zstd --test "${_thisdir}/msys2-base-x86_64-${_date}.tar.zst"
-
-  rm "${_thisdir}/msys2-base-x86_64-${_date}.tar"
-}
-
-create_sfx() {
-  echo "[Creating SFX...]"
-
-  pushd "${_newmsysbase}" > /dev/null
-    "${_thisdir}/create-sfx.sh" "msys64" "${_thisdir}/msys2-base-x86_64-${_date}.sfx.exe"
-  popd > /dev/null
-}
-
-copy_installer() {
-  echo "[Copying installer...]"
-  rm -Rf "${_ifwroot}" && cp -r "${_thisdir}"/qt-ifw "${_ifwroot}"
-
-  find "${_ifwroot}" \( -name "package.xml" -or -name "config.xml" \) -exec sed -i "s|@DATE@|${_dateqif}|g" "{}" \;
-  find "${_ifwroot}" \( -name "package.xml" -or -name "config.xml" \) -exec sed -i "s|@VERSION@|${_version}|g" "{}" \;
-}
-
-create_installer() {
-  echo "[Creating installer...]"
-
-  pushd "${_build}" > /dev/null
-    binarycreator \
-      -t "$(command -v installerbase)" \
-      -p "${_ifwroot}/packages" \
-      -c "${_ifwroot}/config/config.xml" \
-      --offline-only \
-      "${_thisdir}/msys2-x86_64-${_date}.exe" \
-      -v
-  popd > /dev/null
 }
 
 create_chroot_system() {
@@ -86,7 +40,6 @@ create_chroot_system() {
 
 main() {
   pacman -S --noconfirm --needed \
-    "${MINGW_PACKAGE_PREFIX}-qt-installer-framework" \
     "${MINGW_PACKAGE_PREFIX}-7zip" \
     "${MINGW_PACKAGE_PREFIX}-xz" \
     "${MINGW_PACKAGE_PREFIX}-zstd" \
@@ -95,11 +48,8 @@ main() {
   create_chroot_system
 
   copy_installer
-  create_installer_archive
-  create_installer
 
   create_archives
-  create_sfx
 }
 
 main
