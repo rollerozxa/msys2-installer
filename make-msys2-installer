@@ -47,8 +47,6 @@ main() {
 
   create_chroot_system
 
-  copy_installer
-
   create_archives
 }
 
